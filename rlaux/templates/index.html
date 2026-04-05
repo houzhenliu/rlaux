@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>rlaux dashboard</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --bg0: #eef3f8;
+      --bg1: #dce9f2;
+      --surface: #ffffff;
+      --surface-2: #f8fbff;
+      --text: #0f2136;
+      --muted: #5a6f86;
+      --line: #c8d7e6;
+      --accent: #0070d1;
+      --accent-2: #00a57a;
+      --danger: #c73b2f;
+      --chip: #e9f4ff;
+      --shadow: 0 16px 42px rgba(10, 44, 76, 0.1);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Space Grotesk", "Avenir Next", "Segoe UI", sans-serif;
+      background:
+        radial-gradient(1200px 560px at 10% -10%, #d0ecff 0%, transparent 60%),
+        radial-gradient(900px 480px at 95% -20%, #d8f4e8 0%, transparent 62%),
+        linear-gradient(180deg, var(--bg1) 0%, var(--bg0) 26%, #edf2f8 100%);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 28px 18px 34px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #ffffff 0%, #f4faff 100%);
+      border: 1px solid #d5e2ee;
+      box-shadow: var(--shadow);
+      border-radius: 16px;
+      padding: 18px 20px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0.2px;
+    }
+
+    .hint {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 6px 22px rgba(12, 35, 58, 0.06);
+      overflow: hidden;
+    }
+
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--surface-2) 0%, #fff 100%);
+    }
+
+    .card-head h2 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.15px;
+    }
+
+    .badge {
+      font-size: 12px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      color: #005392;
+      background: var(--chip);
+      border: 1px solid #c8e2fb;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 860px;
+      font-size: 14px;
+    }
+
+    th, td {
+      text-align: left;
+      vertical-align: top;
+      border-bottom: 1px solid #dce7f1;
+      padding: 10px 12px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f3f8fd;
+      color: #29425c;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.45px;
+    }
+
+    tr:hover td {
+      background: #fbfdff;
+    }
+
+    .mono {
+      font-family: "JetBrains Mono", "Fira Code", monospace;
+      font-size: 12.5px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 3px 9px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      white-space: nowrap;
+    }
+
+    .status::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-running {
+      color: #13795b;
+      background: #e8f8f2;
+      border: 1px solid #bbe9d9;
+    }
+
+    .status-stopped,
+    .status-exited,
+    .status-unknown {
+      color: #9a5e10;
+      background: #fff4df;
+      border: 1px solid #f1d4a4;
+    }
+
+    td.actions {
+      white-space: nowrap;
+      width: 1%;
+    }
+
+    form {
+      display: inline;
+      margin: 0;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      height: 31px;
+      line-height: 1;
+      padding: 0 11px;
+      font-size: 12px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      margin-right: 6px;
+      background: #fff;
+      color: #24415f;
+      vertical-align: middle;
+    }
+
+    .btn-stop {
+      color: #fff;
+      border-color: var(--danger);
+      background: linear-gradient(180deg, #d74f42 0%, var(--danger) 100%);
+    }
+
+    .btn-log {
+      color: #fff;
+      border-color: var(--accent);
+      background: linear-gradient(180deg, #1d8cec 0%, var(--accent) 100%);
+    }
+
+    .btn:last-child { margin-right: 0; }
+
+    @media (max-width: 860px) {
+      .wrap { padding: 16px 10px 20px; }
+      .hero { padding: 14px; border-radius: 12px; }
+      h1 { font-size: 22px; }
+      .card-head { padding: 12px; }
+      .card-head h2 { font-size: 15px; }
+      .badge { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>rlaux dashboard</h1>
+      <div class="hint">Refresh to sync latest state. Only managed tasks are stoppable.</div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <div class="card-head">
+          <h2>Managed Tasks</h2>
+          <span class="badge">rlaux-owned jobs</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Task ID</th>
+                <th>PID</th>
+                <th>Status</th>
+                <th>Start Time</th>
+                <th>Log Path</th>
+                <th>Command Summary</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in tasks %}
+              <tr>
+                <td>{{ t.id }}</td>
+                <td>{{ t.pid or "-" }}</td>
+                <td><span class="status status-{{ t.status }}">{{ t.status }}</span></td>
+                <td class="small">{{ t.started_at or t.created_at }}</td>
+                <td class="mono small">{{ t.log_path }}</td>
+                <td class="mono">{{ t.command[:120] }}{% if t.command|length > 120 %}...{% endif %}</td>
+                <td class="actions">
+                  {% if t.managed %}
+                  <form action="/tasks/{{ t.id }}/stop" method="post">
+                    <button class="btn btn-stop" type="submit">Stop</button>
+                  </form>
+                  {% endif %}
+                  <a class="btn btn-log" href="/tasks/{{ t.id }}/log?lines=120" target="_blank">View Log</a>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="7" class="small">No managed tasks found.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-head">
+          <h2>Detected Python Processes</h2>
+          <span class="badge">system scan</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>PID</th>
+                <th>Managed</th>
+                <th>Confidence</th>
+                <th>GPU(MB)</th>
+                <th>Command</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in detected %}
+              <tr>
+                <td>{{ p.pid }}</td>
+                <td>{{ "managed" if p.managed else "unmanaged" }}</td>
+                <td>{{ p.confidence }}</td>
+                <td>{{ p.gpu_mem_mb if p.gpu_mem_mb is not none else "" }}</td>
+                <td class="mono">{{ p.cmdline[:160] }}{% if p.cmdline|length > 160 %}...{% endif %}</td>
+                <td class="actions">
+                  {% if p.managed and p.task_id %}
+                  <form action="/tasks/{{ p.task_id }}/stop" method="post">
+                    <button class="btn btn-stop" type="submit">Stop</button>
+                  </form>
+                  {% else %}
+                  <span class="small">-</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="6" class="small">No python training-like processes detected.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+  </div>
+</body>
+</html>
