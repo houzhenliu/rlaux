@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 
-@dataclass(slots=True)
+@dataclass
 class Task:
     id: int
     command: str

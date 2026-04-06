@@ -112,6 +112,8 @@ def _build_managed_gpu_stats(
         pids = _collect_process_tree_pids(int(task.pid))
         mem_total = 0
         has_mem = False
+        mem_pct_total = 0
+        has_mem_pct = False
 
         util_task_share_total = 0
         has_share = False
@@ -127,6 +129,11 @@ def _build_managed_gpu_stats(
             if mem is not None and mem > 0:
                 mem_total += int(mem)
                 has_mem = True
+
+            mem_pct = stats.get("gpu_mem_pct")
+            if mem_pct is not None and mem_pct >= 0:
+                mem_pct_total += int(mem_pct)
+                has_mem_pct = True
 
             util_split = stats.get("gpu_util_pct")
             util_device = stats.get("gpu_util_pct_device")
@@ -153,6 +160,7 @@ def _build_managed_gpu_stats(
 
         out[task.id] = {
             "gpu_mem_mb": mem_total if has_mem else None,
+            "gpu_mem_pct": mem_pct_total if has_mem_pct else None,
             "gpu_util_pct": util_total,
         }
 
@@ -165,17 +173,17 @@ def _build_gpu_overview(
 ) -> dict[str, int]:
     managed_pct = 0
     for stats in managed_gpu_stats.values():
-        util = stats.get("gpu_util_pct")
-        if util is not None:
-            managed_pct += max(0, int(util))
+        mem = stats.get("gpu_mem_pct")
+        if mem is not None:
+            managed_pct += max(0, int(mem))
 
     unmanaged_pct = 0
     for proc in detected:
         if bool(proc.get("managed")):
             continue
-        util = proc.get("gpu_util_pct")
-        if util is not None:
-            unmanaged_pct += max(0, int(util))
+        mem = proc.get("gpu_mem_pct")
+        if mem is not None:
+            unmanaged_pct += max(0, int(mem))
 
     total = managed_pct + unmanaged_pct
     if total > 100:

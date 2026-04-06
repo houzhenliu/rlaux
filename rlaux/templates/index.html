@@ -380,7 +380,7 @@
       <div class="hint">Refresh to sync latest state. Managed tasks expose parsed parameters in expandable rows.</div>
       <div class="gpu-overview">
         <div class="gpu-overview-head">
-          <span>GPU Utilization</span>
+          <span>GPU Memory Usage</span>
           <span class="mono">Total {{ gpu_overview.total_pct }}%</span>
         </div>
         <div class="gpu-bar">
@@ -413,7 +413,6 @@
                 <th>Log Path</th>
                 <th>Command Summary</th>
                 <th>GPU(MB)</th>
-                <th>GPU(%)</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -428,7 +427,6 @@
                 <td class="mono small">{{ t.log_path }}</td>
                 <td class="mono">{{ t.command[:120] }}{% if t.command|length > 120 %}...{% endif %}</td>
                 <td>{{ managed_gpu_stats.get(t.id, {}).get("gpu_mem_mb") if t.pid else "" }}</td>
-                <td>{{ managed_gpu_stats.get(t.id, {}).get("gpu_util_pct") if t.pid else "" }}</td>
                 <td class="actions">
                   <button
                     class="btn btn-ghost"
@@ -445,7 +443,7 @@
                 </td>
               </tr>
               <tr id="param-row-{{ t.id }}" class="param-row">
-                <td colspan="9">
+                <td colspan="8">
                   <div class="param-box">
                     <div class="param-box-title">Task {{ t.id }} Parameters</div>
                     {% if params %}
@@ -472,7 +470,7 @@
                 </td>
               </tr>
               {% else %}
-              <tr><td colspan="9" class="small">No managed tasks found.</td></tr>
+              <tr><td colspan="8" class="small">No managed tasks found.</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -499,7 +497,7 @@
                 <th>Managed</th>
                 <th>Confidence</th>
                 <th>GPU(MB)</th>
-                <th>GPU(%)</th>
+                <th>GPU Mem(%)</th>
                 <th>Command</th>
                 <th>Actions</th>
               </tr>
@@ -511,7 +509,7 @@
                 <td>{{ "managed" if p.managed else "unmanaged" }}</td>
                 <td>{{ p.confidence }}</td>
                 <td>{{ p.gpu_mem_mb if p.gpu_mem_mb is not none else "" }}</td>
-                <td>{{ p.gpu_util_pct if p.gpu_util_pct is not none else "" }}</td>
+                <td>{{ p.gpu_mem_pct if p.gpu_mem_pct is not none else "" }}</td>
                 <td class="mono">{{ p.cmdline[:160] }}{% if p.cmdline|length > 160 %}...{% endif %}</td>
                 <td class="actions">
                   {% if p.managed and p.task_id %}

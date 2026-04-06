@@ -66,37 +66,40 @@ def _query_compute_apps() -> dict[int, dict[str, Any]]:
     return out
 
 
-def _query_gpu_devices() -> tuple[dict[str, int], dict[str, int]]:
+def _query_gpu_devices() -> tuple[dict[str, int], dict[str, int], dict[str, int]]:
     cmd = [
         "nvidia-smi",
-        "--query-gpu=uuid,index,utilization.gpu",
+        "--query-gpu=uuid,index,utilization.gpu,memory.total",
         "--format=csv,noheader,nounits",
     ]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=1.5)
     except Exception:
-        return {}, {}
+        return {}, {}, {}
     if proc.returncode != 0:
-        return {}, {}
+        return {}, {}, {}
 
     util_by_uuid: dict[str, int] = {}
     index_by_uuid: dict[str, int] = {}
+    total_mem_by_uuid: dict[str, int] = {}
     for line in proc.stdout.splitlines():
         parts = [p.strip() for p in line.split(",")]
-        if len(parts) < 3:
+        if len(parts) < 4:
             continue
-        uuid_raw, idx_raw, util_raw = parts[0], parts[1], parts[2]
+        uuid_raw, idx_raw, util_raw, total_mem_raw = parts[0], parts[1], parts[2], parts[3]
         try:
             idx = int(idx_raw)
             util = int(util_raw)
+            total_mem_mb = int(total_mem_raw)
         except ValueError:
             continue
-        if not uuid_raw or idx < 0 or util < 0:
+        if not uuid_raw or idx < 0 or util < 0 or total_mem_mb <= 0:
             continue
         index_by_uuid[uuid_raw] = idx
         util_by_uuid[uuid_raw] = util
+        total_mem_by_uuid[uuid_raw] = total_mem_mb
 
-    return util_by_uuid, index_by_uuid
+    return util_by_uuid, index_by_uuid, total_mem_by_uuid
 
 
 def query_gpu_stats_by_pid() -> dict[int, dict[str, int | None]]:
@@ -109,7 +112,7 @@ def query_gpu_stats_by_pid() -> dict[int, dict[str, int | None]]:
         return dict(_GPU_STATS_CACHE)
 
     apps = _query_compute_apps()
-    util_by_uuid, index_by_uuid = _query_gpu_devices()
+    util_by_uuid, index_by_uuid, total_mem_by_uuid = _query_gpu_devices()
 
     pids_by_gpu: dict[str, list[int]] = {}
     for pid, app in apps.items():
@@ -126,19 +129,26 @@ def query_gpu_stats_by_pid() -> dict[int, dict[str, int | None]]:
         gpu_util_device: int | None = None
         gpu_util_split: int | None = None
         gpu_index: int | None = None
+        gpu_mem_pct: int | None = None
+        gpu_mem_total_mb: int | None = None
 
         if gpu_uuid:
             gpu_util_device = util_by_uuid.get(gpu_uuid)
             gpu_index = index_by_uuid.get(gpu_uuid)
+            gpu_mem_total_mb = total_mem_by_uuid.get(gpu_uuid)
             if gpu_util_device is not None:
                 group_size = len(pids_by_gpu.get(gpu_uuid, []))
                 if group_size > 0:
                     gpu_util_split = int(round(gpu_util_device / group_size))
                 else:
                     gpu_util_split = gpu_util_device
+            if gpu_mem_total_mb is not None and mem_mb is not None and gpu_mem_total_mb > 0:
+                gpu_mem_pct = int(round((int(mem_mb) / int(gpu_mem_total_mb)) * 100.0))
 
         out[pid] = {
             "gpu_mem_mb": int(mem_mb) if mem_mb is not None else None,
+            "gpu_mem_pct": gpu_mem_pct,
+            "gpu_mem_total_mb": gpu_mem_total_mb,
             "gpu_util_pct": gpu_util_split,
             "gpu_util_pct_device": gpu_util_device,
             "gpu_index": gpu_index,
@@ -221,6 +231,7 @@ def scan_python_processes(
                     "task_id": None,
                     "confidence": confidence,
                     "gpu_mem_mb": gpu_mem_mb,
+                    "gpu_mem_pct": gpu_stats.get("gpu_mem_pct"),
                     "gpu_util_pct": gpu_stats.get("gpu_util_pct"),
                 }
             )
