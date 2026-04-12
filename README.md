@@ -50,7 +50,7 @@ rlaux stop 1
 rlaux dashboard
 ```
 
-默认地址：`http://127.0.0.1:17878`
+默认监听：`0.0.0.0:17878`（可通过 `<服务器IP>:17878` 从外部访问）
 
 ## 命令说明
 
@@ -94,7 +94,7 @@ rlaux stop <task_id>
 ### `rlaux dashboard`
 
 ```bash
-rlaux dashboard --host 127.0.0.1 --port 17878
+rlaux dashboard --host 0.0.0.0 --port 17878
 ```
 
 页面包含：
@@ -128,7 +128,7 @@ rlaux run --log /tmp/rlaux_demo.log -- python -c "import time\nfor i in range(12
 rlaux list
 
 # 看日志尾部（浏览器）
-# http://127.0.0.1:17878/tasks/<task_id>/log?lines=120
+# http://<服务器IP>:17878/tasks/<task_id>/log?lines=120
 
 # 停止任务
 rlaux stop <task_id>

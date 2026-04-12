@@ -66,40 +66,43 @@ def _query_compute_apps() -> dict[int, dict[str, Any]]:
     return out
 
 
-def _query_gpu_devices() -> tuple[dict[str, int], dict[str, int], dict[str, int]]:
+def _query_gpu_devices() -> tuple[dict[str, int], dict[str, int], dict[str, int], dict[str, int]]:
     cmd = [
         "nvidia-smi",
-        "--query-gpu=uuid,index,utilization.gpu,memory.total",
+        "--query-gpu=uuid,index,utilization.gpu,memory.total,memory.used",
         "--format=csv,noheader,nounits",
     ]
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=1.5)
     except Exception:
-        return {}, {}, {}
+        return {}, {}, {}, {}
     if proc.returncode != 0:
-        return {}, {}, {}
+        return {}, {}, {}, {}
 
     util_by_uuid: dict[str, int] = {}
     index_by_uuid: dict[str, int] = {}
     total_mem_by_uuid: dict[str, int] = {}
+    used_mem_by_uuid: dict[str, int] = {}
     for line in proc.stdout.splitlines():
         parts = [p.strip() for p in line.split(",")]
-        if len(parts) < 4:
+        if len(parts) < 5:
             continue
-        uuid_raw, idx_raw, util_raw, total_mem_raw = parts[0], parts[1], parts[2], parts[3]
+        uuid_raw, idx_raw, util_raw, total_mem_raw, used_mem_raw = parts[0], parts[1], parts[2], parts[3], parts[4]
         try:
             idx = int(idx_raw)
             util = int(util_raw)
             total_mem_mb = int(total_mem_raw)
+            used_mem_mb = int(used_mem_raw)
         except ValueError:
             continue
-        if not uuid_raw or idx < 0 or util < 0 or total_mem_mb <= 0:
+        if not uuid_raw or idx < 0 or util < 0 or total_mem_mb <= 0 or used_mem_mb < 0:
             continue
         index_by_uuid[uuid_raw] = idx
         util_by_uuid[uuid_raw] = util
         total_mem_by_uuid[uuid_raw] = total_mem_mb
+        used_mem_by_uuid[uuid_raw] = used_mem_mb
 
-    return util_by_uuid, index_by_uuid, total_mem_by_uuid
+    return util_by_uuid, index_by_uuid, total_mem_by_uuid, used_mem_by_uuid
 
 
 def query_gpu_stats_by_pid() -> dict[int, dict[str, int | None]]:
@@ -112,7 +115,7 @@ def query_gpu_stats_by_pid() -> dict[int, dict[str, int | None]]:
         return dict(_GPU_STATS_CACHE)
 
     apps = _query_compute_apps()
-    util_by_uuid, index_by_uuid, total_mem_by_uuid = _query_gpu_devices()
+    util_by_uuid, index_by_uuid, total_mem_by_uuid, _ = _query_gpu_devices()
 
     pids_by_gpu: dict[str, list[int]] = {}
     for pid, app in apps.items():
@@ -157,6 +160,26 @@ def query_gpu_stats_by_pid() -> dict[int, dict[str, int | None]]:
     _GPU_STATS_CACHE = out
     _GPU_STATS_CACHE_TS = time.time()
     return dict(out)
+
+
+def query_gpu_total_memory_usage_pct() -> int | None:
+    _, _, total_mem_by_uuid, used_mem_by_uuid = _query_gpu_devices()
+    total_mem_mb = 0
+    used_mem_mb = 0
+    for uuid, total_mb in total_mem_by_uuid.items():
+        used_mb = used_mem_by_uuid.get(uuid)
+        if used_mb is None:
+            continue
+        if total_mb <= 0:
+            continue
+        total_mem_mb += int(total_mb)
+        used_mem_mb += max(0, int(used_mb))
+
+    if total_mem_mb <= 0:
+        return None
+
+    pct = int(round((used_mem_mb / total_mem_mb) * 100.0))
+    return max(0, min(100, pct))
 
 
 def _looks_pythonish(name: str, cmdline_lower: str) -> bool:

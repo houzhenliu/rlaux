@@ -390,7 +390,7 @@
         </div>
         <div class="gpu-legend">
           <span class="gpu-legend-item"><span class="gpu-dot gpu-dot-managed"></span>managed {{ gpu_overview.managed_pct }}%</span>
-          <span class="gpu-legend-item"><span class="gpu-dot gpu-dot-unmanaged"></span>unmanaged {{ gpu_overview.unmanaged_pct }}%</span>
+          <span class="gpu-legend-item"><span class="gpu-dot gpu-dot-unmanaged"></span>other(gray) {{ gpu_overview.unmanaged_pct }}%</span>
           <span class="gpu-legend-item"><span class="gpu-dot gpu-dot-idle"></span>idle {{ gpu_overview.idle_pct }}%</span>
         </div>
       </div>
@@ -471,58 +471,6 @@
               </tr>
               {% else %}
               <tr><td colspan="8" class="small">No managed tasks found.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </article>
-
-      <article class="card">
-        <div class="card-head">
-          <h2>Detected Python Processes</h2>
-          <div>
-            {% if show_all %}
-            <a class="btn btn-ghost" href="/">Show Training Only</a>
-            {% else %}
-            <a class="btn btn-ghost" href="/?show_all=1">Show All Python/Py</a>
-            {% endif %}
-            <span class="badge">system scan</span>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>PID</th>
-                <th>Managed</th>
-                <th>Confidence</th>
-                <th>GPU(MB)</th>
-                <th>GPU Mem(%)</th>
-                <th>Command</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for p in detected %}
-              <tr>
-                <td>{{ p.pid }}</td>
-                <td>{{ "managed" if p.managed else "unmanaged" }}</td>
-                <td>{{ p.confidence }}</td>
-                <td>{{ p.gpu_mem_mb if p.gpu_mem_mb is not none else "" }}</td>
-                <td>{{ p.gpu_mem_pct if p.gpu_mem_pct is not none else "" }}</td>
-                <td class="mono">{{ p.cmdline[:160] }}{% if p.cmdline|length > 160 %}...{% endif %}</td>
-                <td class="actions">
-                  {% if p.managed and p.task_id %}
-                  <form action="/tasks/{{ p.task_id }}/stop" method="post">
-                    <button class="btn btn-stop" type="submit">Stop</button>
-                  </form>
-                  {% else %}
-                  <span class="small">-</span>
-                  {% endif %}
-                </td>
-              </tr>
-              {% else %}
-              <tr><td colspan="7" class="small">No python/py related processes detected.</td></tr>
               {% endfor %}
             </tbody>
           </table>

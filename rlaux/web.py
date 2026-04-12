@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import shlex
 from pathlib import Path
-from typing import Any
 
 import psutil
 import uvicorn
@@ -15,7 +14,7 @@ from .db import get_task, list_tasks
 from .log_utils import tail_lines
 from .models import Task
 from .runner import RunnerError, refresh_task_states, stop_task
-from .scanner import query_gpu_stats_by_pid, scan_python_processes
+from .scanner import query_gpu_stats_by_pid, query_gpu_total_memory_usage_pct
 
 ACTIVE_STATUSES = {"running", "unknown"}
 
@@ -169,7 +168,7 @@ def _build_managed_gpu_stats(
 
 def _build_gpu_overview(
     managed_gpu_stats: dict[int, dict[str, int | None]],
-    detected: list[dict[str, Any]],
+    total_used_pct: int | None,
 ) -> dict[str, int]:
     managed_pct = 0
     for stats in managed_gpu_stats.values():
@@ -177,29 +176,18 @@ def _build_gpu_overview(
         if mem is not None:
             managed_pct += max(0, int(mem))
 
-    unmanaged_pct = 0
-    for proc in detected:
-        if bool(proc.get("managed")):
-            continue
-        mem = proc.get("gpu_mem_pct")
-        if mem is not None:
-            unmanaged_pct += max(0, int(mem))
+    managed_pct = min(100, managed_pct)
+    total_pct = managed_pct if total_used_pct is None else min(100, max(0, int(total_used_pct)))
+    if managed_pct > total_pct:
+        managed_pct = total_pct
 
-    total = managed_pct + unmanaged_pct
-    if total > 100:
-        overflow = total - 100
-        unmanaged_pct = max(0, unmanaged_pct - overflow)
-        total = managed_pct + unmanaged_pct
-        if total > 100:
-            managed_pct = max(0, 100 - unmanaged_pct)
-            total = managed_pct + unmanaged_pct
-
-    idle_pct = max(0, 100 - total)
+    other_pct = max(0, total_pct - managed_pct)
+    idle_pct = max(0, 100 - total_pct)
     return {
         "managed_pct": managed_pct,
-        "unmanaged_pct": unmanaged_pct,
+        "unmanaged_pct": other_pct,
         "idle_pct": idle_pct,
-        "total_pct": min(100, managed_pct + unmanaged_pct),
+        "total_pct": total_pct,
     }
 
 
@@ -213,12 +201,10 @@ def create_app() -> FastAPI:
         tasks = _active_tasks(list_tasks())
         task_params = _build_task_params(tasks)
 
-        show_all_raw = request.query_params.get("show_all", "0")
-        show_all = show_all_raw in {"1", "true", "True"}
         gpu_stats_by_pid = query_gpu_stats_by_pid()
-        detected = scan_python_processes(include_all=show_all, gpu_stats_by_pid=gpu_stats_by_pid)
         managed_gpu_stats = _build_managed_gpu_stats(tasks, gpu_stats_by_pid)
-        gpu_overview = _build_gpu_overview(managed_gpu_stats, detected)
+        total_used_pct = query_gpu_total_memory_usage_pct()
+        gpu_overview = _build_gpu_overview(managed_gpu_stats, total_used_pct)
 
         return templates.TemplateResponse(
             request=request,
@@ -226,10 +212,8 @@ def create_app() -> FastAPI:
             context={
                 "tasks": tasks,
                 "task_params": task_params,
-                "detected": detected,
                 "managed_gpu_stats": managed_gpu_stats,
                 "gpu_overview": gpu_overview,
-                "show_all": show_all,
             },
         )
 
